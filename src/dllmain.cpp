@@ -14,6 +14,8 @@
 #include "contracts.h"
 #include "quantum.h"
 #include "ammo.h"
+#include "travel.h"
+#include "version.h"
 #include "services.h"
 #include "menu.h"
 
@@ -135,6 +137,7 @@ static void OnMainThreadTick() {
     ProcessContracts();
     ProcessAmmo();
     TeleportTick(now);
+    ProcessTravel(now);
 }
 
 static HHOOK g_msgHook = nullptr;
@@ -167,7 +170,7 @@ static void RunMainThreadService() {
 static DWORD WINAPI ModThread(LPVOID param) {
     HMODULE self = static_cast<HMODULE>(param);
     OpenConsole();
-    Log("ChrisWareOffline");
+    Log("ChrisWareOffline v" CWO_VERSION);
     Log("Join our Discord server https://discord.gg/bUAuKMJUJs");
 
     HMODULE game = GetModuleHandleW(kTargetModule);
