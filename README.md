@@ -1,6 +1,6 @@
 # ChrisWareOffline
 
-If you do not want to use the source and just want to play the offline mod get it here https://github.com/trionic1/chrisware-project/releases/tag/release
+If you do not want to use the source and just want to play the offline mod get it here https://github.com/cloudyyrust/ChrisWareOffline
 
 Play Star Citizen offline on your own PC
 
@@ -74,13 +74,29 @@ If your game is not installed in C:\Program Files\Roberts Space Industries\StarC
 
 Leave the black script window open while you play. When you close the game it removes the mod from your game folder.
 
+## The menu
+
+Press M in game to open it. It has these tabs.
+
+- Player: noclip, god mode, infinite ammo and your gear
+- Travel: teleport to planets, moons, stations, Lagrange points and jump points, and save your own named spots. Press Scan the game for places once in each system to fill the list
+- Vehicles: spawn any ship, pick the seat you start in, remove the NPC in that seat and power the ship on. Infinite ship ammo is here too
+- Crew: see every seat on your ship and who is in it. Sit anywhere, make NPCs stand up, remove them or add your own
+- NPCs: spawn NPCs in front of you and remove them again
+- Build: place outposts, buildings and props. Prefabs show a flag while you move and the real building when you hold still
+- Menu: background image and settings
+
+To use your own menu background save an image as menu_background.png in the data folder and restart the game.
+
+F7 saves where you stand and F8 takes you back there. Teleports only work inside the star system you are in.
+
 ## Update the mod
 
 1. Close the game
 2. Get the new source with git pull or download it again
 3. Build it again like in Step 2
 
-If you download a fresh copy then copy wallet.txt and spawn.txt from the old data folder into the new one to keep your money and saved spot.
+If you download a fresh copy then copy wallet.txt, spawn.txt, bookmarks.txt and locations_found.txt from the old data folder into the new one to keep your money, saved spots and scanned places.
 
 ## Play online again
 
