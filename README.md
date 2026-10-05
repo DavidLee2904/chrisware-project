@@ -1,6 +1,6 @@
 # ChrisWareOffline
 
-If you do not want to use the source and just want to play the offline mod get it here https://github.com/cloudyyrust/ChrisWareOffline
+If you do not want to use the source and just want to play the offline mod get it here https://github.com/trionic1/chrisware-project/releases/tag/release
 
 Play Star Citizen offline on your own PC
 
