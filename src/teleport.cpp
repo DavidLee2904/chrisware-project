@@ -174,6 +174,24 @@ static const char* CaptureSpot(Spot& s, double world[3]) {
     }
 }
 
+bool PlayerZoneChain(char* out, size_t n) {
+    out[0] = 0;
+    __try {
+        uintptr_t actor, entity;
+        if (!GetLocalPlayer(actor, entity)) return false;
+        int depth = 0;
+        for (uintptr_t z = VCall<uintptr_t>(entity, 0x6B8); z && depth < kMaxZoneDepth; z = ZoneParent(z), ++depth) {
+            const char* name = ZoneName(z);
+            if (!name || !*name) continue;
+            if (out[0]) strncat_s(out, n, " > ", _TRUNCATE);
+            strncat_s(out, n, name, _TRUNCATE);
+        }
+        return out[0] != 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 static int FindSavedZone(const Spot& s, uintptr_t entity, uintptr_t& zoneOut) {
     uintptr_t chain[kMaxZoneDepth];
     const char* names[kMaxZoneDepth];

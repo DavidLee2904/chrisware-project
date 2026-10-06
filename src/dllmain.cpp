@@ -17,7 +17,13 @@
 #include "travel.h"
 #include "version.h"
 #include "services.h"
+#include "spawnpicker.h"
+#include "character.h"
+#include "session.h"
+#include "presence.h"
+#include "shops.h"
 #include "menu.h"
+#include "lobby.h"
 
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "advapi32.lib")
@@ -93,6 +99,10 @@ static void StartOffline() {
     g_offline = ApplyOfflinePatches();
     if (!g_offline) return;
     InstallHooks(g_text);
+    ResolveSpawnPickerApi(g_text, g_rdata);
+    ResolveCharacterApi(g_text, g_rdata);
+    ResolveSessionApi(g_text, g_rdata);
+    ResolveShopsApi(g_text, g_rdata);
     ResolveQuantumApi(g_text, g_rdata);
     if (ResolveTeleportApi(g_text, g_rdata)) {
         ResolveSpawnApi(g_text, g_rdata);
@@ -136,6 +146,10 @@ static void OnMainThreadTick() {
     ProcessMissions();
     ProcessContracts();
     ProcessAmmo();
+    ProcessSpawnPicker(now);
+    ProcessCharacter(now);
+    ProcessSession();
+    ProcessPresence(now);
     TeleportTick(now);
     ProcessTravel(now);
 }
@@ -163,6 +177,7 @@ static void RunMainThreadService() {
     while (!hwnd) { EnumWindows(FindGameWindow, reinterpret_cast<LPARAM>(&hwnd)); if (!hwnd) Sleep(1000); }
     g_msgHook = SetWindowsHookExW(WH_GETMESSAGE, GetMsgProc, nullptr, GetWindowThreadProcessId(hwnd, nullptr));
     if (!g_msgHook) { Log("[tp] could not hook the game's message loop (%lu); hotkeys disabled", GetLastError()); return; }
+    Lobby_Start(hwnd);
     if (SpawnerReady()) Menu_Start(hwnd);
     for (;;) { PostMessageW(hwnd, WM_NULL, 0, 0); Sleep(200); }
 }

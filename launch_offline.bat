@@ -2,7 +2,7 @@
 
 set "SC_BIN=C:\Program Files\Roberts Space Industries\StarCitizen\LIVE\Bin64"
 set "MOD_DLL=%~dp0x64\Release\dinput8.dll"
-set "SC_OFFLINE_BOOT_MAP=PU_All"
+if not defined SC_OFFLINE_BOOT_MAP set "SC_OFFLINE_BOOT_MAP=PU_All"
 set "SC_OFFLINE_MOD_LOG=%~dp0data\mod.log"
 set "SC_OFFLINE_SPAWN_FILE=%~dp0data\spawn.txt"
 set "SC_OFFLINE_SHIPS_FILE=%~dp0data\ships.txt"

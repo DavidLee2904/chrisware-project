@@ -145,3 +145,9 @@ namespace ImGui
     void MyFunction(const char* name, MyMatrix44* mtx);
 }
 */
+
+//---- ChrisWareOffline: the M menu and the lobby each run ImGui on their own thread, so the current
+// context is per thread (defined in lobby.cpp).
+struct ImGuiContext;
+extern thread_local ImGuiContext* g_ImGuiTls;
+#define GImGui g_ImGuiTls

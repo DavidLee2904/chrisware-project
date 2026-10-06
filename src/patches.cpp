@@ -101,12 +101,21 @@ static bool BootIntoAllSystems() {
     return n > 0 && n < sizeof(value) && _stricmp(value, "PU_All") == 0;
 }
 
-static PatchStatus PatchBootIntoPU(const Section& text, const Section& rdata) {
+// The frontend request site, as the game has it and as patched (frontend request -> PU). SetBootIntoPU switches
+// between them at runtime: the lobby sends you to the main menu (the character creator) and back.
+static uint8_t* g_bootSite = nullptr;
+static uint8_t  g_bootOriginal[14], g_bootPatched[14];
+
+static bool BootIntoPURequested();
+
+// apply = false: find the site and prepare the bytes, but leave the game booting into its main menu.
+static PatchStatus PatchBootIntoPU(const Section& text, const Section& rdata, bool apply) {
     PatchStatus st;
     st.expected = 1;
     const uint8_t* frontend   = FindCString(rdata, "Frontend_Main");
     const uint8_t* scFrontend = FindCString(rdata, "SC_Frontend");
-    const uint8_t* allMap     = BootIntoAllSystems() ? FindCString(rdata, "MegaMap.PU_All") : nullptr;
+    // Every system unless PU (Stanton only) was asked for; also when booting into the main menu.
+    const uint8_t* allMap     = BootIntoAllSystems() || !BootIntoPURequested() ? FindCString(rdata, "MegaMap.PU_All") : nullptr;
     const uint8_t* pu         = allMap ? allMap + 8 : FindCString(rdata, "PU");
     const uint8_t* scDefault  = FindCString(rdata, "SC_Default");
     if (!frontend || !scFrontend || !pu || !scDefault) { st.result = PatchResult::NotFound; return st; }
@@ -130,6 +139,10 @@ static PatchStatus PatchBootIntoPU(const Section& text, const Section& rdata) {
     memcpy(patched, site, sizeof(patched));
     memcpy(patched + 3, &relRules, 4);
     memcpy(patched + 10, &relMap, 4);
+    memcpy(g_bootOriginal, site, sizeof(g_bootOriginal));
+    memcpy(g_bootPatched, patched, sizeof(g_bootPatched));
+    g_bootSite = site;
+    if (!apply) { st.result = PatchResult::NotRun; return st; }
     if (!WriteCode(site, patched, sizeof(patched), st.err)) { st.result = PatchResult::ProtectFailed; return st; }
     st.result = PatchResult::Applied;
     st.at = site;
@@ -431,8 +444,7 @@ bool ApplyOfflinePatches() {
         g_handshakePatch = PatchHandshakeGate(text, rdata);
     g_megamapCasePatch = PatchMegamapCase(text, rdata);
     if (g_isOnlinePatch.result != PatchResult::Applied) return false;
-    if (BootIntoPURequested())
-        g_bootIntoPUPatch = PatchBootIntoPU(text, rdata);
+    g_bootIntoPUPatch = PatchBootIntoPU(text, rdata, BootIntoPURequested());
     g_offlineDbPatch = PatchOfflineDbPath(text, rdata);
     g_orLoopPatch = PatchOrLoopBound(text);
     g_asopPatch = PatchAsopShardGate(text, rdata);
@@ -443,6 +455,12 @@ bool ApplyOfflinePatches() {
     g_remoteConsolePatch = PatchRemoteConsoleLocal(text, rdata);
     g_profilerServerPatch = PatchNoProfilerServer(text);
     return true;
+}
+
+bool SetBootIntoPU(bool on) {
+    if (!g_bootSite) return false;
+    DWORD err = 0;
+    return WriteCode(g_bootSite, on ? g_bootPatched : g_bootOriginal, sizeof(g_bootPatched), err);
 }
 
 void LogOfflinePatches() {

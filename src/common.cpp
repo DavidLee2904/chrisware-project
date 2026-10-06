@@ -149,3 +149,11 @@ bool ShipsFilePath(char* path, DWORD n) {
     const DWORD len = GetEnvironmentVariableA("SC_OFFLINE_SHIPS_FILE", path, n);
     return len > 0 && len < n;
 }
+
+bool DataFilePath(const char* file, char* path, size_t n) {
+    const DWORD len = GetEnvironmentVariableA("SC_OFFLINE_SPAWN_FILE", path, static_cast<DWORD>(n));
+    char* slash = len && len < n ? strrchr(path, '\\') : nullptr;
+    if (!slash) return false;
+    strcpy_s(slash + 1, n - static_cast<size_t>(slash + 1 - path), file);
+    return true;
+}

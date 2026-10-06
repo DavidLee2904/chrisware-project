@@ -43,3 +43,4 @@ constexpr uint64_t kPtrMask = 0xFFFFFFFFFFFFull;
 
 bool GameHasFocus();
 bool ShipsFilePath(char* path, DWORD n);
+bool DataFilePath(const char* file, char* path, size_t n);   // a file in the mod's data folder (next to the spawn file)

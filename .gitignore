@@ -16,6 +16,7 @@ src/x64/
 
 data/wallet.txt
 data/spawn*.txt
+data/all_locations.txt
 data/*_test.txt
 data/list_first.txt
 data/ui_notify_off.txt
@@ -25,3 +26,15 @@ discord.ini
 data/menu_background.*
 data/locations_found.txt
 data/bookmarks.txt
+data/mod.log
+data/spawn.txt
+data/spawn_location.txt
+data/spawn_locations.txt
+data/character.txt
+data/characters/
+data/outfit.txt
+data/multiplayer.txt
+tools/re/strings.pkl
+tools/re/__pycache__/
+tools/testbot/*.exe
+tools/testbot/*.obj

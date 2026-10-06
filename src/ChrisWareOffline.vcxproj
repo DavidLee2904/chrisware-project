@@ -174,8 +174,15 @@
     <ClCompile Include="quantum.cpp" />
     <ClCompile Include="ammo.cpp" />
     <ClCompile Include="services.cpp" />
+    <ClCompile Include="character.cpp" />
+    <ClCompile Include="lobby.cpp" />
     <ClCompile Include="menu.cpp" />
     <ClCompile Include="travel.cpp" />
+    <ClCompile Include="net.cpp" />
+    <ClCompile Include="presence.cpp" />
+    <ClCompile Include="session.cpp" />
+    <ClCompile Include="shops.cpp" />
+    <ClCompile Include="spawnpicker.cpp" />
     <ClCompile Include="third_party\imgui\imgui.cpp" />
     <ClCompile Include="third_party\imgui\imgui_draw.cpp" />
     <ClCompile Include="third_party\imgui\imgui_tables.cpp" />
@@ -201,7 +208,14 @@
     <ClInclude Include="dcb_patch.h" />
     <ClInclude Include="ammo.h" />
     <ClInclude Include="services.h" />
+    <ClInclude Include="character.h" />
+    <ClInclude Include="lobby.h" />
     <ClInclude Include="menu.h" />
+    <ClInclude Include="net.h" />
+    <ClInclude Include="presence.h" />
+    <ClInclude Include="session.h" />
+    <ClInclude Include="shops.h" />
+    <ClInclude Include="spawnpicker.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

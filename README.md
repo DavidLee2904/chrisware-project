@@ -90,13 +90,24 @@ To use your own menu background save an image as menu_background.png in the data
 
 F7 saves where you stand and F8 takes you back there. Teleports only work inside the star system you are in.
 
+## The lobby (F9)
+
+The lobby is a window of its own, separate from the M menu. It opens by itself while the game loads and waits for you to choose where to spawn, and F9 opens it in game.
+
+- Spawn: pick where you start. Stanton's cities (Lorville, Area18, Orison, New Babbage) and the major stations in Pyro and Nyx. The mod uses the game's own spawn location override, so the game itself puts you there. Your choice is saved in data\spawn_location.txt
+- Character: open the game's own character creator (OPEN CREATOR takes you to the main menu, BACK TO THE UNIVERSE brings you back). When you save there your look is kept in data\characters and put on again every time you spawn. The gear you equip in the M menu is remembered (data\outfit.txt) and worn with your look
+- Multiplayer: host or join a session on your local network, see who is in it and chat. Other players show up in your universe as stand-ins when you share a zone. tools\testbot\testbot.exe joins your session and walks around you, to try it on one PC (build it with tools\testbot\build.bat)
+
+Shop kiosks, ship dealers and rental screens list items and prices from data\shop_catalog.txt (made by tools\re\gen_shop_catalog.py from the game data). Buying is not done yet.
+
+
 ## Update the mod
 
 1. Close the game
 2. Get the new source with git pull or download it again
 3. Build it again like in Step 2
 
-If you download a fresh copy then copy wallet.txt, spawn.txt, bookmarks.txt and locations_found.txt from the old data folder into the new one to keep your money, saved spots and scanned places.
+If you download a fresh copy then copy wallet.txt, spawn.txt, bookmarks.txt, locations_found.txt, spawn_location.txt, spawn_locations.txt, character.txt, outfit.txt, multiplayer.txt and the characters folder from the old data folder into the new one to keep your money, saved spots, scanned places, spawn choice, look and outfit.
 
 ## Play online again
 

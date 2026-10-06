@@ -1,4 +1,5 @@
 #include "loadout.h"
+#include "character.h"
 #include "teleport.h"
 #include "menu.h"
 #include <share.h>
@@ -134,41 +135,43 @@ static std::string Gun(const char* port, const char* gun) {
 
 static std::string HeadAndMobiGlas();
 
-static std::string LoadoutXml(const int picks[Gear_SlotCount]) {
-    const char* torso   = Pick(picks, Gear_Torso);
-    const char* legs    = Pick(picks, Gear_Legs);
-    const char* primary = Pick(picks, Gear_Primary);
-    const char* sidearm = Pick(picks, Gear_Sidearm);
-    const char* ammo    = Pick(picks, Gear_Ammo);
+static std::string LoadoutXml(const char* const names[Gear_SlotCount]) {
+    const char* torso   = names[Gear_Torso];
+    const char* legs    = names[Gear_Legs];
+    const char* primary = names[Gear_Primary];
+    const char* sidearm = names[Gear_Sidearm];
+    const char* ammo    = names[Gear_Ammo];
     if (!ammo) ammo = MatchingMag(primary);
 
     std::string onTorso, onLegs;
-    if (const char* b = Pick(picks, Gear_Backpack)) onTorso += Item("backpack", b);
+    if (const char* b = names[Gear_Backpack]) onTorso += Item("backpack", b);
     if (primary) onTorso += Gun("wep_stocked_3", primary);
     for (int i = 1; ammo && i <= (torso ? 4 : 2); ++i) onTorso += Item(("magazine_attach_" + std::to_string(i)).c_str(), ammo);
-    if (const char* g = Pick(picks, Gear_Grenade); g && torso)
+    if (const char* g = names[Gear_Grenade]; g && torso)
         for (int i = 1; i <= 2; ++i) onTorso += Item(("grenade_attach_" + std::to_string(i)).c_str(), g);
     if (sidearm) onLegs += Gun("wep_sidearm", sidearm);
     onLegs += Item("medPen_attach_1", "crlf_consumable_healing_01");
 
     std::string onSuit;
-    if (const char* h = Pick(picks, Gear_Helmet)) onSuit += Item("Armor_Helmet", h);
+    if (const char* h = names[Gear_Helmet]) onSuit += Item("Armor_Helmet", h);
     if (torso) onSuit += Item("Armor_Torso", torso, onTorso); else onSuit += onTorso;
-    if (const char* a = Pick(picks, Gear_Arms)) onSuit += Item("Armor_Arms", a);
+    if (const char* a = names[Gear_Arms]) onSuit += Item("Armor_Arms", a);
     if (legs) onSuit += Item("Armor_Legs", legs, onLegs); else onSuit += onLegs;
 
-    const char* suit = Pick(picks, Gear_Undersuit);
+    const char* suit = names[Gear_Undersuit];
     return "<Loadout><Items>" + Item("Body_ItemPort", "body_01",
         Item("Armor_Undersuit", suit ? suit : "rsi_odyssey_undersuit_01_01_01", onSuit) + HeadAndMobiGlas())
         + "</Items></Loadout>\n";
 }
 
+// The head is your look's (character.cpp reads it from Game.log after the look goes on), else a stock one.
 static std::string HeadAndMobiGlas() {
-    return Item("Head_ItemPort", "PU_Protos_Head",
+    const std::string lookHead = Character_HeadXml();
+    return (!lookHead.empty() ? lookHead : Item("Head_ItemPort", "PU_Protos_Head",
                 Item("Eyes_ItemPort", "Head_Eyes_Blue_01", Item("Lens_ItemPort", "Default_LensDisplay_PU"))
                 + "<Item portName=\"Teeth_ItemPort\" itemName=\"Head_Teeth\" tag=\"Char_Accessory_Head\"/>"
                 + "<Item portName=\"Hair_ItemPort\" itemName=\"hair_37\" tag=\"Char_Head_Hair Male\"><Items>"
-                + Item("Material_Variant", "Hair_Var_Brown") + "</Items></Item>")
+                + Item("Material_Variant", "Hair_Var_Brown") + "</Items></Item>"))
         + Item("mobiglas_attach", "MobiGlas",
                "<Item portName=\"mobiglas_screen_attach\" itemName=\"PersonalMobiGlas_PU\" tag=\"MobiGlas\"/>"
                "<Item portName=\"legacy_mobiglas_screen_attach\" itemName=\"LegacyMobiGlas\" tag=\"MobiGlas\"/>");
@@ -206,7 +209,72 @@ static void Equip(const std::string& xml) {
     strcpy_s(lastFile, file);
 }
 
-static void EquipPicks(const int picks[Gear_SlotCount]) { Equip(LoadoutXml(picks)); }
+// ---- Your outfit: the gear you equipped last (data\outfit.txt), put back on at every spawn ----------
+// "<slot> <item>" lines, slots as in items.txt. Until you equip something it's the offline spawn outfit
+// (Game.log AttachmentReceived): odyssey undersuit and its helmet, the energy pistol.
+static std::string g_outfit[Gear_SlotCount];
+static bool        g_outfitLoaded = false;
+
+static void LoadOutfit() {
+    if (g_outfitLoaded) return;
+    g_outfitLoaded = true;
+    g_outfit[Gear_Undersuit] = "rsi_odyssey_undersuit_01_01_01";
+    g_outfit[Gear_Helmet]    = "rsi_odyssey_undersuit_helmet_01_01_01";
+    g_outfit[Gear_Sidearm]   = "klwe_pistol_energy_01";
+    char path[MAX_PATH];
+    FILE* f = DataFilePath("outfit.txt", path, sizeof(path)) ? _fsopen(path, "r", _SH_DENYNO) : nullptr;
+    if (!f) return;
+    for (std::string& slot : g_outfit) slot.clear();
+    char line[160];
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = 0;
+        if (line[0] == '#') continue;
+        char* space = strchr(line, ' ');
+        if (!space) continue;
+        *space = 0;
+        for (int i = 0; i < Gear_SlotCount; ++i)
+            if (_stricmp(line, kSlotNames[i]) == 0) g_outfit[i] = space + 1;
+    }
+    fclose(f);
+}
+
+static void SaveOutfit() {
+    char path[MAX_PATH];
+    FILE* f = DataFilePath("outfit.txt", path, sizeof(path)) ? _fsopen(path, "w", _SH_DENYNO) : nullptr;
+    if (!f) { Log("[gear] can't write outfit.txt"); return; }
+    fprintf(f, "# ChrisWareOffline outfit: the gear you equipped last, put back on at every spawn.\n");
+    for (int i = 0; i < Gear_SlotCount; ++i)
+        if (!g_outfit[i].empty()) fprintf(f, "%s %s\n", kSlotNames[i], g_outfit[i].c_str());
+    fclose(f);
+}
+
+static void EquipOutfit() {
+    const char* names[Gear_SlotCount];
+    for (int i = 0; i < Gear_SlotCount; ++i) names[i] = g_outfit[i].empty() ? nullptr : g_outfit[i].c_str();
+    Equip(LoadoutXml(names));
+}
+
+static void EquipPicks(const int picks[Gear_SlotCount]) {
+    LoadOutfit();
+    for (int i = 0; i < Gear_SlotCount; ++i) {
+        const char* name = Pick(picks, i);
+        g_outfit[i] = name ? name : "";
+    }
+    SaveOutfit();
+    EquipOutfit();
+}
+
+// Main thread, in the universe. Builds the gear lists first if the menu hasn't (they match magazines to guns).
+bool Loadout_EquipOutfit() {
+    if (!g_lo.ok) return false;
+    if (g_gearState != 2) {
+        __try { BuildGearLists(); } __except (EXCEPTION_EXECUTE_HANDLER) { Log("[gear] fault while reading items.txt"); }
+        InterlockedExchange(&g_gearState, 2);
+    }
+    LoadOutfit();
+    EquipOutfit();
+    return true;
+}
 
 void ProcessLoadout() {
     if (!g_lo.ok || !g_tp.ok) return;

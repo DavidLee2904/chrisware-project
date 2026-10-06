@@ -9,6 +9,8 @@
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <string>
+#include <vector>
 #include "third_party/imgui/imgui.h"
 #include "third_party/imgui/imgui_impl_win32.h"
 #include "third_party/imgui/imgui_impl_dx11.h"

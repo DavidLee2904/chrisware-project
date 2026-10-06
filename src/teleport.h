@@ -21,6 +21,7 @@ void        LocalToWorld(uintptr_t zone, const double local[3], double world[3])
 bool        WorldToLocal(uintptr_t zone, const double world[3], double local[3]);
 
 const char* TeleportToEntity(uint64_t entityId, double up);
+bool        PlayerZoneChain(char* out, size_t n);   // "innermost > ... > outermost" zone names
 
 // A saved position: where you were in each zone, innermost first.
 constexpr int kMaxZoneDepth = 12;
