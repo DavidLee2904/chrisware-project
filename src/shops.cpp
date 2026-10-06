@@ -450,9 +450,121 @@ void ProcessShops() {
     }
 }
 
+static uint8_t* CallTarget(uint8_t* call) { return call[0] == 0xE8 ? call + 5 + Rel32(call + 1) : nullptr; }
+
+// ---- A display of our own: the Crusader Morozov-SH on Cubby Blast's heavy-armor mannequins (Area18) ----------
+// Mannequins are racks: CEntityComponentShop::PopulateStandardRackItems(shop, ctx, empty rack ports) fills each empty
+// port with an inventory item that passes the item-port check sub_00508f50(port def, attach def, 0) (0 = fits; it calls
+// at +0x53 the RequiredPortTags test sub_00530b30, whose port def +0x68 is the tags string). The heavy marine
+// mannequins want "Marine_Heavy Set_01 Color_01"; while Cubby Blast fills its racks those ports take only the Morozov
+// pieces, and for them the tags test is skipped (size and type checks still run). Display items get the shop's buy
+// interaction, so buying them goes through BuyHook.
+static const char* const kRackFillPrologue = "48 8B C4 4C 89 40 18 48 89 50 10 48 89 48 08 55";
+static const char* const kPortCheckPrologue = "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20";
+static const char* const kPortTagsPrologue = "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57";
+static const char* const kDisplayShop = "SCShop_Entity_CubbyBlast_Area18";
+static const char* const kDisplayPortTags = "Marine_Heavy Set_01 Color_01";
+static const char* const kDisplayItems[] = {
+    "rrs_specialist_heavy_core_01_crus01_01", "rrs_specialist_light_arms_01_crus01_01",
+    "rrs_specialist_heavy_legs_01_crus01_01", "rrs_specialist_heavy_helmet_03_crus01_01" };
+
+using RackFillFn = void(__fastcall*)(uintptr_t shop, uintptr_t ctx, uintptr_t ports);
+using PortCheckFn = int(__fastcall*)(uintptr_t portDef, uintptr_t attachDef, uint8_t flag);
+using PortTagsFn = bool(__fastcall*)(uintptr_t portDef, uintptr_t attachDef, uint8_t flag);
+using AttachDefFn = uintptr_t(__fastcall*)(uintptr_t registry, uintptr_t cls);
+static RackFillFn  g_origRackFill = nullptr;
+static PortCheckFn g_origPortCheck = nullptr;
+static PortTagsFn  g_origPortTags = nullptr;
+static AttachDefFn g_attachDefOf = nullptr;
+static uintptr_t*  g_attachRegistry = nullptr;
+static uintptr_t   g_displayDefs[4] = {};
+static volatile DWORD g_displayThread = 0;   // thread filling Cubby Blast's racks, 0 if none
+static volatile DWORD g_skipTagsThread = 0;  // thread whose next tags test passes
+static int         g_displayPlaced = 0;
+
+static bool ResolveDisplayDefs() {
+    if (g_displayDefs[0]) return true;
+    __try {
+        const uintptr_t registry = *g_tp.entitySystem ? VCall<uintptr_t>(*g_tp.entitySystem, 0xC0) : 0;
+        for (int i = 0; i < 4 && registry; ++i) {
+            const uintptr_t cls = VCall<uintptr_t>(registry, 0x20, kDisplayItems[i]);
+            g_displayDefs[i] = cls ? g_attachDefOf(*g_attachRegistry, cls) : 0;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        memset(g_displayDefs, 0, sizeof(g_displayDefs));
+    }
+    for (uintptr_t d : g_displayDefs) if (!d) { memset(g_displayDefs, 0, sizeof(g_displayDefs)); return false; }
+    return true;
+}
+
+static bool IsDisplayShop(uintptr_t shop) {
+    __try {
+        const uintptr_t entity = Rd<uintptr_t>(shop + 8) & 0xFFFFFFFFFFFFull;
+        const char* name = entity ? VCall<const char*>(entity, 0x78) : nullptr;
+        return name && strcmp(name, kDisplayShop) == 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+static bool IsDisplayPort(uintptr_t portDef) {
+    __try {
+        const char* tags = Rd<const char*>(portDef + 0x68);
+        return tags && strcmp(tags, kDisplayPortTags) == 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+static int __fastcall PortCheckHook(uintptr_t portDef, uintptr_t attachDef, uint8_t flag) {
+    if (g_displayThread != GetCurrentThreadId() || !IsDisplayPort(portDef)) return g_origPortCheck(portDef, attachDef, flag);
+    bool ours = false;
+    for (uintptr_t d : g_displayDefs) ours |= d == attachDef;
+    if (!ours) return 4;   // "tags don't match": only the Morozov goes on these mannequins
+    g_skipTagsThread = GetCurrentThreadId();
+    const int result = g_origPortCheck(portDef, attachDef, flag);
+    g_skipTagsThread = 0;
+    if (result == 0) ++g_displayPlaced;
+    return result;
+}
+
+static bool __fastcall PortTagsHook(uintptr_t portDef, uintptr_t attachDef, uint8_t flag) {
+    if (g_skipTagsThread == GetCurrentThreadId()) return true;
+    return g_origPortTags(portDef, attachDef, flag);
+}
+
+static void __fastcall RackFillHook(uintptr_t shop, uintptr_t ctx, uintptr_t ports) {
+    const bool display = IsDisplayShop(shop) && ResolveDisplayDefs();
+    if (!display) { g_origRackFill(shop, ctx, ports); return; }
+    const int before = g_displayPlaced;
+    g_displayThread = GetCurrentThreadId();
+    g_origRackFill(shop, ctx, ports);
+    g_displayThread = 0;
+    if (g_displayPlaced != before)
+        Log("[shop] %s: the Crusader Morozov-SH is on display (%d piece(s) placed)", kDisplayShop, g_displayPlaced - before);
+}
+
+static void HookMorozovDisplay(const Section& text, const Section& rdata) {
+    const uint8_t* name = FindCString(rdata, "CEntityComponentShop::PopulateStandardRackItems");
+    uint8_t* lea = name ? FindRipLea(text, 0x4C, 0x8D, 0x05, name) : nullptr;
+    uint8_t* fill = lea ? lea - 0x97 : nullptr;
+    uint8_t* check = fill && fill[0x3AA] == 0xE8 ? CallTarget(fill + 0x3AA) : nullptr;
+    uint8_t* tags = check && check[0x53] == 0xE8 ? CallTarget(check + 0x53) : nullptr;
+    if (!fill || !BytesMatch(fill, kRackFillPrologue) || !BytesMatch(fill + 0x379, "48 8B 0D") || fill[0x383] != 0xE8 ||
+        !check || !BytesMatch(check, kPortCheckPrologue) || !tags || !BytesMatch(tags, kPortTagsPrologue)) {
+        Log("[!] shops: rack filling not found; no Morozov display at Cubby Blast");
+        return;
+    }
+    g_attachRegistry = reinterpret_cast<uintptr_t*>(fill + 0x379 + 7 + Rel32(fill + 0x379 + 3));
+    g_attachDefOf = reinterpret_cast<AttachDefFn>(CallTarget(fill + 0x383));
+    if (HookFunction(tags, 10, reinterpret_cast<void*>(&PortTagsHook), reinterpret_cast<void**>(&g_origPortTags)) &&
+        HookFunction(check, 10, reinterpret_cast<void*>(&PortCheckHook), reinterpret_cast<void**>(&g_origPortCheck)) &&
+        HookFunction(fill, 15, reinterpret_cast<void*>(&RackFillHook), reinterpret_cast<void**>(&g_origRackFill)))
+        Log("[+] shops: Cubby Blast (Area18) puts the Crusader Morozov-SH on its heavy-armor mannequins");
+}
+
 // ---- Resolve -------------------------------------------------------------------------------------
 
-static uint8_t* CallTarget(uint8_t* call) { return call[0] == 0xE8 ? call + 5 + Rel32(call + 1) : nullptr; }
 
 void ResolveShopsApi(const Section& text, const Section& rdata) {
     int matches = 0;
@@ -487,6 +599,8 @@ void ResolveShopsApi(const Section& text, const Section& rdata) {
         Log("[+] shops: buying offline (wallet pays, the item drops at your feet)");
     else
         Log("[!] shops: the buy request handler wasn't found; buying fails with Transaction Service Error");
+
+    HookMorozovDisplay(text, rdata);
 
     const uint8_t* loadName = FindCString(rdata, "CShopInventory::LoadInventoryFromJSON");
     uint8_t* loadLea = loadName ? FindRipLea(text, 0x4C, 0x8D, 0x05, loadName) : nullptr;
