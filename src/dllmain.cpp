@@ -145,6 +145,7 @@ static void OnMainThreadTick() {
     ProcessQuantum();
     ProcessMissions();
     ProcessContracts();
+    ProcessShops();
     ProcessAmmo();
     ProcessSpawnPicker(now);
     ProcessCharacter(now);

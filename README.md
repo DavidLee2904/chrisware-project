@@ -98,7 +98,7 @@ The lobby is a window of its own, separate from the M menu. It opens by itself w
 - Character: open the game's own character creator (OPEN CREATOR takes you to the main menu, BACK TO THE UNIVERSE brings you back). When you save there your look is kept in data\characters and put on again every time you spawn. The gear you equip in the M menu is remembered (data\outfit.txt) and worn with your look
 - Multiplayer: host or join a session on your local network, see who is in it and chat. Other players show up in your universe as stand-ins when you share a zone. tools\testbot\testbot.exe joins your session and walks around you, to try it on one PC (build it with tools\testbot\build.bat)
 
-Shop kiosks, ship dealers and rental screens list items and prices from data\shop_catalog.txt (made by tools\re\gen_shop_catalog.py from the game data). Buying is not done yet.
+Shops: the display racks list items and prices from data\shop_catalog.txt (made by tools\re\gen_shop_catalog.py from the game data), and you can buy from them: the price comes out of your wallet and the item drops at your feet. Every item shop sells the whole catalog for now. Shop terminals stay empty, commodity kiosks list nothing, and ship dealers and rentals aren't done yet.
 
 
 ## Update the mod

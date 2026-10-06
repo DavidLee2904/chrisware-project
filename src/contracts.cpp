@@ -1246,6 +1246,27 @@ static void SaveWallet() {
     }
 }
 
+int64_t Wallet_Balance() {
+    __try {
+        const uintptr_t wallet = PlayerWallet();
+        return wallet ? Rd<int64_t>(wallet + kWalletUec) : -1;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return -1;
+    }
+}
+
+bool Wallet_Pay(int64_t uec) {
+    char ok = 0;
+    __try {
+        const uintptr_t wallet = PlayerWallet();
+        if (wallet && g_updateBalance) ok = g_updateBalance(wallet, 1, -uec);
+        if (ok) SaveWallet();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+    return ok != 0;
+}
+
 static bool PlayerDataPath(const char* nickname, char path[MAX_PATH]) {
     char dir[MAX_PATH], name[48];
     const DWORD d = GetEnvironmentVariableA("SC_USER", dir, sizeof(dir));

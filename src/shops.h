@@ -5,3 +5,5 @@
 // CIG's shop service over Diffusion ("sss-shop.*" RPCs), which offline answers "not connected", so they load
 // forever. We answer those RPCs from data\shop_catalog.txt (tools\re\gen_shop_catalog.py).
 void ResolveShopsApi(const Section& text, const Section& rdata);
+// Stage 2: buying. Buy requests are answered here (wallet pays); bought items are spawned on the main thread.
+void ProcessShops();
